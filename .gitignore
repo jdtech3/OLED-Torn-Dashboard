@@ -1,1 +1,6 @@
-settings.h
+# Editor specific
+.pio/
+.vscode/
+
+# Sekrit settings
+src/settings.h
