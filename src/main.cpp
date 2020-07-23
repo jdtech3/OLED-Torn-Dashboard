@@ -97,24 +97,17 @@ void loop() {
 
     // Update travel info "cache" every 60 secs and overwrite/recal timer
     if (checkTimer == 60) {
-        display.setTextColor(WHITE, BLACK);
-        display.setTextSize(1);
-        display.setCursor(123, 56);
-        display.print("C"); display.display();  // indicate checking
-
         struct TravelInfo tInfoTemp = getTravelInfo();
 
         timer = tInfoTemp.timeLeft;
         checkTimer = 0;
 
-        // If display state/config will possibly be different, clear display and store new
+        // If display state/config will possibly be different, clear display
         if (tInfoTemp.destination != tInfo.destination || tInfoTemp.state != tInfo.state) {
-            tInfo = tInfoTemp;
             display.clearDisplay();
         }
 
-        display.setCursor(123, 56);
-        display.print(" "); display.display();  // reset checking indicator
+        tInfo = tInfoTemp;      // store new
     }
     else {
         checkTimer++;
@@ -184,7 +177,8 @@ void loop() {
         display.setTextSize(1);
         char barsBuf[25];
         sprintf(barsBuf, "E:%d/%d / N:%d/%d", tInfo.energyCur, tInfo.energyMax, tInfo.nerveCur, tInfo.nerveMax);
-        display.println(barsBuf);
+        display.print(std::string(25, ' ').c_str());         // overwrite the entire line first
+        display.setCursor(0, 56); display.println(barsBuf);
     }
 
     display.display();  // update display
