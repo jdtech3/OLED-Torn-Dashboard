@@ -44,6 +44,8 @@ struct TravelInfo getTravelInfo();
 
 
 void setup() {
+    system_update_cpu_freq(160);    // overclocking :p
+
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);     // I2C address
     display.display(); display.clearDisplay();     // clear splash screen
 
@@ -52,8 +54,11 @@ void setup() {
     display.setCursor(0, 0);
 
     char vccBuf[24];
-    sprintf(vccBuf, "Vcc: %.2fV", ESP.getVcc() / 1000.0);
+    char freqBuf[24];
+    sprintf(vccBuf, "Vcc: %.2fV", system_get_vdd33() / 1000.0);
+    sprintf(freqBuf, "Freq: %d MHz", system_get_cpu_freq());
     display.println(vccBuf);
+    display.println(freqBuf);
 
     // Connect to WiFi (continously displaying Vcc and connection status)
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -65,10 +70,11 @@ void setup() {
         delay(500);
     }
 
-    // Display Logo, IP and Vcc
+    // Display Logo, IP, Vcc, freq
     display.clearDisplay();
     display.setCursor(0, 0);
     display.println(vccBuf);
+    display.println(freqBuf);
     display.setCursor(0, 48);
     display.println(F("Connected."));
     display.println(String("IP: ") + WiFi.localIP().toString());
@@ -86,6 +92,11 @@ void loop() {
 
     // Update travel info "cache" every 60 secs and overwrite/recal timer
     if (checkTimer == 60) {
+        display.setTextColor(WHITE, BLACK);
+        display.setTextSize(1);
+        display.setCursor(123, 56);
+        display.print("C"); display.display();  // indicate checking
+
         struct TravelInfo tInfoTemp = getTravelInfo();
 
         timer = tInfoTemp.timeLeft;
@@ -96,6 +107,9 @@ void loop() {
             tInfo = tInfoTemp;
             display.clearDisplay();
         }
+
+        display.setCursor(123, 56);
+        display.print(" "); display.display();  // reset checking indicator
     }
     else {
         checkTimer++;
