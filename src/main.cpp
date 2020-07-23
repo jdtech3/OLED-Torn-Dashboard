@@ -16,9 +16,17 @@ Adafruit_SSD1306 display(128, 64, &Wire, -1);  // height, width, lib, reset pin
 
 uint64_t timeNow = 0;       // for (more) accurate loop delay
 uint8_t arrowAnimPos = 0;   // offset position of arrow animation
+uint16_t checkTimer = 60;   // timer for next API check
 uint16_t timer;             // travel timer
-String destination;         // travel destination
-String state;               // player state (i.e. "Okay")
+
+// Small info data type
+struct TravelInfo {
+    String state;
+    String destination;
+    uint16_t timeLeft;
+};
+
+struct TravelInfo tInfo;    // "cached" travel info
 
 const unsigned char jLogoBitmap [] PROGMEM = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00,
@@ -31,25 +39,13 @@ const unsigned char jLogoBitmap [] PROGMEM = {
 	0x00, 0x01, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-// Small info data type
-struct TravelInfo {
-    String state;
-    String destination;
-    uint16_t timeLeft;
-};
-
-// Functions
+// Function skeletons
 struct TravelInfo getTravelInfo();
 
 
 void setup() {
-    Serial.begin(115200);
-    Serial.setDebugOutput(true);
-    pinMode(0, INPUT_PULLUP);   // use FLASH button
-
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);     // I2C address
-    display.display();
-    display.clearDisplay();   // clear splash screen
+    display.display(); display.clearDisplay();     // clear splash screen
 
     display.setTextSize(1);               // set initial display settings
     display.setTextColor(WHITE, BLACK);
@@ -77,53 +73,51 @@ void setup() {
     display.println(F("Connected."));
     display.println(String("IP: ") + WiFi.localIP().toString());
     display.drawBitmap(48, 16, jLogoBitmap, 32, 32, WHITE);  // use own splash screen
-    display.display();
+
+    display.display();  // display all of above
 
     delay(1000);
 
-    // Query Torn travel info and set vars
-    struct TravelInfo tInfo = getTravelInfo();
-    timer = tInfo.timeLeft;
-    state = tInfo.state;
-    destination = tInfo.destination;
+    display.clearDisplay(); display.display();  // clear splash stuff
+}
 
-    display.clearDisplay();
-    display.setCursor(0, 0);
+void loop() {
+    timeNow = millis();   // for timing
+
+    // Update travel info "cache" every 60 secs and overwrite/recal timer
+    if (checkTimer == 60) {
+        struct TravelInfo tInfoTemp = getTravelInfo();
+
+        timer = tInfoTemp.timeLeft;
+        checkTimer = 0;
+
+        // If display state/config will possibly be different, clear display and store new
+        if (tInfoTemp.destination != tInfo.destination || tInfoTemp.state != tInfo.state) {
+            tInfo = tInfoTemp;
+            display.clearDisplay();
+        }
+    }
+    else {
+        checkTimer++;
+    }
 
     // Travelling...
     if (timer > 0) {
+        // - Destination display - //
+
         char buf[24];
-        sprintf(buf, "> %s <", destination.c_str());
+        sprintf(buf, "> %s <", tInfo.destination.c_str());
 
         // Center "> destination <" within screen (64px max width)
         int16_t _s; uint16_t _u;
         uint16_t textWidth; display.getTextBounds(buf, 0, 0, &_s, &_s, &textWidth, &_u);
         display.setCursor((128 - textWidth) / 2, 0);
 
+        display.setTextSize(1);
         display.println(buf);
-    }
-    // Arrived at destination!
-    else if (tInfo.destination != "Torn") {
-        display.println(String("Arrived: ") + tInfo.destination);
-    }
-    // In Torn, not travelling
-    else {
-        display.println(F("At: Torn City"));
-        display.println(F("No travel detected :("));
-    }
 
-    display.display();  // display all of above
-}
+        // - Travel timer - //
 
-void loop() {
-    timeNow = millis();   // for timing
-
-    // Set display settings for big text
-    display.setTextSize(2);
-    display.setTextColor(WHITE, BLACK);
-
-    // Travelling... display travel timer
-    if (timer > 0) {
         // Calc hours, minutes, seconds
         uint16_t s = timer;
         uint8_t hours = s / 3600; s = s % 3600;
@@ -131,22 +125,40 @@ void loop() {
         uint8_t seconds = s;
 
         // Format timer output string (0-pad minutes and seconds)
-        char buf[12];
         sprintf(buf, "T: %d:%02d:%02d", hours, minutes, seconds);
 
         display.setCursor(0, 24);
+        display.setTextSize(2);
         display.println(buf);
 
         timer--;  // decrement timer by a second
-    }
-    // Not travelling... display status instead
-    else {
-        display.setCursor(0, 24);
 
-        display.setTextSize(1);
+        // If timer hits 0 after above decrement, update info and clear display to make room to new info
+        if (timer == 0) {
+            tInfo = getTravelInfo(); checkTimer = 0;
+            display.clearDisplay();
+        }
+    }
+    else {
+        // Not travelling, but arrived at overseas destination!
+        if (tInfo.destination != "Torn") {
+            display.setCursor(0, 0);
+            display.setTextSize(1);
+            display.println(String("Arrived: ") + tInfo.destination);
+        }
+        // Not travelling... in Torn
+        else {
+            display.setCursor(0, 0);
+            display.setTextSize(1);
+            display.println(F("At: Torn City"));
+            display.println(F("No travel detected :("));
+        }
+
+        // Display status anyway
+        display.setCursor(0, 24);
         display.println(F("Status:"));
         display.setTextSize(2);
-        display.println(state);
+        display.println(tInfo.state);
     }
 
     display.display();  // update display
@@ -157,13 +169,21 @@ void loop() {
         // Play arrow animation if travelling
         if (timer > 0) {
             if (millis() % 500 == 0) {
-                char arrow;
-                destination == F("Torn") ? arrow = '<' : arrow = '>';   // make arrow point left when returning, right when going
-
                 display.setTextSize(1);
                 display.setCursor(51, 56); display.print(F("     "));   // clear existing
-                display.setCursor(51 + arrowAnimPos, 56);   // figure out where to put arrow
+
+                // Make arrow point left when returning, right when going and make animation go the corresponding way
+                char arrow;
+                if (tInfo.destination == F("Torn")) {
+                    arrow = '<';
+                    display.setCursor(71 - arrowAnimPos, 56);
+                }
+                else {
+                    arrow = '>';
+                    display.setCursor(51 + arrowAnimPos, 56);
+                }
                 display.print(arrow);
+
                 display.display();
 
                 arrowAnimPos == 20 ? arrowAnimPos = 0 : arrowAnimPos += 5;  // check number = (# of arrows - 1) * 5
