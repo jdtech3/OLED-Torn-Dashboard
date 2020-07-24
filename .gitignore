@@ -3,4 +3,4 @@
 .vscode/
 
 # Sekrit settings
-src/settings.h
+include/settings.h
