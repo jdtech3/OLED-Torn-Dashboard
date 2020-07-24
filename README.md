@@ -1,6 +1,10 @@
 # OLED-Torn-Dashboard
 Torn City dashboard and travel timer powered by ESP8266 and the Torn API
 
+### "Screenshots" :rofl:
+
+<img src="https://cdn.discordapp.com/attachments/486266126129430562/736081222010273882/IMG_20200723_214316.jpg" width="400">
+
 ### Features:
 
 - [x] Connects to WiFi and queries Torn API every X seconds
