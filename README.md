@@ -5,11 +5,11 @@ Torn City dashboard and travel timer powered by ESP8266 and the Torn API
 
 **Travelling:**
 
-<img src="https://cdn.discordapp.com/attachments/486266126129430562/736081222010273882/IMG_20200723_214316.jpg" width="400">
+<img src="https://github.com/jdtech3/OLED-Torn-Dashboard/assets/8998191/31f1a792-5648-4e8c-9157-93556e00f541" width="400">
 
 **Not travelling:**
 
-<img src="https://cdn.discordapp.com/attachments/486266126129430562/742645553283727390/IMG_20200724_194555.jpg" width="420">
+<img src="https://github.com/jdtech3/OLED-Torn-Dashboard/assets/8998191/d5124abf-f205-4553-ac7e-ddcd5e0da254" width="420">
 
 ### Features:
 
